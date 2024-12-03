@@ -36,8 +36,10 @@ export const observeRecentActivities = (callback: (activities: Activity[]) => vo
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('Snapshot recebido:', snapshot.size, 'documentos');
       const activities = snapshot.docs.map(doc => {
         const data = doc.data();
+        console.log('Dados do documento:', data);
         return {
           id: doc.id,
           ...data,

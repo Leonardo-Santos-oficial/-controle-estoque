@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import * as firebaseService from '../services/firebaseService';
 import { checkLowStockLevels } from '../services/notificationService';
 import { Activity, observeRecentActivities, addActivity } from '../services/activityService';
+import { detectAnomalies } from '../utils/anomalyDetection'; // Update import statement
 
 export interface Product {
   id: string;
@@ -145,6 +146,26 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         loading: false
       }));
       toast.success('Produto adicionado com sucesso!');
+
+      // Registrar atividade de adição de produto
+      await firebaseService.addActivity({
+        type: 'product_update',
+        description: `Produto ${newProduct.name} adicionado`,
+        userId: 'system', // Substitua pelo ID do usuário atual, se disponível
+        userName: 'Sistema', // Substitua pelo nome do usuário atual, se disponível
+        timestamp: new Date(),
+        metadata: {
+          productId: newProduct.id,
+          productName: newProduct.name
+        }
+      });
+
+      // Após adicionar o produto, verificar anomalias
+      const anomalies = detectAnomalies(get().movements);
+      if (anomalies.length > 0) {
+        console.warn('Anomalias detectadas nas movimentações:', anomalies);
+        // Aqui você pode adicionar lógica para lidar com anomalias, como notificações
+      }
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Erro ao adicionar produto',

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   FaBox, 
   FaExchangeAlt, 
@@ -7,11 +7,14 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaUser,
-  FaClipboardList
+  FaClipboardList,
+  FaExclamationTriangle,
+  FaBoxOpen
 } from 'react-icons/fa';
 import { useInventoryStore } from '../store/useInventoryStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { calculateRestockRecommendations } from '../utils/restockRecommendation';
 
 export function Dashboard() {
   const { 
@@ -24,8 +27,12 @@ export function Dashboard() {
     fetchProducts,
     fetchMovements,
     fetchActivities,
-    fetchAlerts
+    fetchAlerts,
+    setActivities
   } = useInventoryStore();
+
+  const [anomalies, setAnomalies] = useState([]);
+  const [restockRecommendations, setRestockRecommendations] = useState([]);
 
   useEffect(() => {
     console.log('Iniciando carregamento do dashboard...');
@@ -44,6 +51,31 @@ export function Dashboard() {
     };
     loadData();
   }, [fetchProducts, fetchMovements, fetchActivities, fetchAlerts]);
+
+  useEffect(() => {
+    console.log('Atividades atuais:', activities);
+    if (activities.length === 0) {
+      console.warn('Nenhuma atividade encontrada. Verifique se a consulta está correta e se os dados estão sendo atualizados.');
+    }
+  }, [activities]);
+
+  useEffect(() => {
+    // Simular detecção de anomalias para teste
+    const detectedAnomalies = detectAnomalies(movements);
+    setAnomalies(detectedAnomalies);
+  }, [movements]);
+
+  useEffect(() => {
+    // Preparar dados para recomendações
+    const productsWithMovements = products.map(product => ({
+      ...product,
+      movements: movements.filter(m => m.productId === product.id)
+    }));
+    
+    // Calcular recomendações
+    const recommendations = calculateRestockRecommendations(productsWithMovements);
+    setRestockRecommendations(recommendations);
+  }, [products, movements]);
 
   const stats = [
     {
@@ -111,11 +143,46 @@ export function Dashboard() {
         </div>
       ) : (
         <>
+          {/* Seção de Anomalias */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Anomalias Detectadas
+              </h2>
+              <div className="space-y-4">
+                {anomalies.length > 0 ? (
+                  anomalies.map((anomaly, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center">
+                        <div className="p-2 bg-red-50 rounded-full mr-4">
+                          <FaExclamationTriangle className="text-red-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            Quantidade: {anomaly.quantity}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Data: {new Date(anomaly.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">Nenhuma anomalia detectada.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat, index) => (
               <div
-                key={index}
+                key={`${stat.title}-${index}`} 
                 className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-center justify-between">
@@ -159,7 +226,7 @@ export function Dashboard() {
                   const product = products.find(p => p.id === movement.productId);
                   return (
                     <div
-                      key={movement.id}
+                      key={movement.id} 
                       className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors"
                     >
                       <div className="flex items-center">
@@ -197,7 +264,7 @@ export function Dashboard() {
                   .slice(0, 5)
                   .map((product) => (
                     <div
-                      key={product.id}
+                      key={product.id} 
                       className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors"
                     >
                       <div className="flex items-center">
@@ -219,6 +286,63 @@ export function Dashboard() {
             </div>
           </div>
 
+          {/* Seção de Recomendações de Reabastecimento */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Recomendações de Reabastecimento
+              </h2>
+              <div className="space-y-4">
+                {restockRecommendations.length > 0 ? (
+                  restockRecommendations.map((recommendation) => (
+                    <div
+                      key={recommendation.productId} 
+                      className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center">
+                        <div className={`p-2 rounded-full mr-4 ${
+                          recommendation.urgency === 'high' 
+                            ? 'bg-red-50' 
+                            : recommendation.urgency === 'medium'
+                            ? 'bg-yellow-50'
+                            : 'bg-green-50'
+                        }`}>
+                          <FaBoxOpen className={`${
+                            recommendation.urgency === 'high'
+                              ? 'text-red-500'
+                              : recommendation.urgency === 'medium'
+                              ? 'text-yellow-500'
+                              : 'text-green-500'
+                          }`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {recommendation.productName}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {recommendation.reason}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Quantidade Recomendada: {recommendation.recommendedQuantity} unidades
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {recommendation.estimatedDaysUntilStockout !== null 
+                          ? `${recommendation.estimatedDaysUntilStockout} dias restantes`
+                          : 'Sem consumo recente'}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Nenhuma recomendação de reabastecimento no momento.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Recent Activity */}
           <div className="bg-white rounded-lg shadow">
             <div className="p-6">
@@ -228,7 +352,7 @@ export function Dashboard() {
               <div className="space-y-4">
                 {activities.map((activity) => (
                   <div
-                    key={activity.id}
+                    key={activity.id} 
                     className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors"
                   >
                     <div className="flex items-center">
@@ -261,6 +385,15 @@ export function Dashboard() {
       )}
     </div>
   );
+}
+
+// Simulação de detecção de anomalias
+function detectAnomalies(movements) {
+  // Implementar lógica para detectar anomalias
+  return [
+    { quantity: 10, timestamp: new Date('2023-03-01T10:00:00') },
+    { quantity: 20, timestamp: new Date('2023-03-05T12:00:00') },
+  ];
 }
 
 export default Dashboard;

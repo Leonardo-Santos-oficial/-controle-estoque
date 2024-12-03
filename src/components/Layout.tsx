@@ -16,7 +16,8 @@ import {
   FaTachometerAlt,
   FaBars,
   FaTimes,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaRobot  
 } from 'react-icons/fa';
 
 export function Layout() {
@@ -49,6 +50,7 @@ export function Layout() {
     { path: '/reports', icon: <FaChartBar />, label: 'Relatórios' },
     { path: '/settings', icon: <FaCog />, label: 'Configurações' },
     { path: '/users', icon: <FaUsers />, label: 'Usuários' },
+    { path: '/ai-test', icon: <FaRobot />, label: 'Teste IA' },  
   ];
 
   return (

@@ -13,6 +13,7 @@ import { History } from './pages/History';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Users } from './pages/Users';
+import AITest from './pages/AITest';
 import { startNotificationChecks, stopNotificationChecks } from './services/notificationService';
 import { useInventoryStore } from './store/useInventoryStore';
 
@@ -76,6 +77,7 @@ function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="users" element={<Users />} />
+          <Route path="ai-test" element={<AITest />} />
         </Route>
       </Routes>
     </Router>
